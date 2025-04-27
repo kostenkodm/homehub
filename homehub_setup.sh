@@ -2,7 +2,8 @@
 
 # Turn off the LED
 sudo bash -c 'echo 0 > /sys/devices/platform/gpio-leds/leds/working/brightness'
-
+# Change hostname
+sudo hostnamectl hostname HomeHub
 # Update package list
 sudo apt update
 

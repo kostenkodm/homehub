@@ -1,3 +1,3 @@
 # homehub
 
-wget https://github.com/user/repo/raw/main/install_home_assistant.sh -O install_home_assistant.sh && chmod +x install_home_assistant.sh && sudo ./install_home_assistant.sh
+wget https://raw.githubusercontent.com/kostenkodm/homehub/refs/heads/main/homehub_setup.sh && chmod +x homehub_setup.sh && sudo ./homehub_setup.sh

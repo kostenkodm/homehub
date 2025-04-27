@@ -31,11 +31,9 @@ sed -i \
   -e 's|^PRETTY_NAME=.*|PRETTY_NAME="Debian GNU/Linux 12 (bookworm)"|' \
   /etc/os-release
 
-# Загрузка и установка OS Agent
-OS_AGENT_VER=1.7.2
-deb_arch="linux_aarch64"
-wget "https://github.com/home-assistant/os-agent/releases/download/${OS_AGENT_VER}/os-agent_${OS_AGENT_VER}_${deb_arch}.deb" -P /root
-dpkg -i /root/os-agent_${OS_AGENT_VER}_${deb_arch}.deb
+# Загрузка и установка OS Agent (версия 1.7.2 для aarch64)
+wget https://github.com/home-assistant/os-agent/releases/download/1.7.2/os-agent_1.7.2_linux_aarch64.deb -P /root
+dpkg -i /root/os-agent_1.7.2_linux_aarch64.deb
 
 # Установка Docker
 curl -fsSL https://get.docker.com -o /root/get-docker.sh
@@ -45,8 +43,7 @@ groupadd -f docker
 usermod -aG docker "$SUDO_USER"
 
 # Загрузка пакета Home Assistant Supervised для установки после перезагрузки
-HA_SUP_VER=3.0.0
-wget "https://github.com/home-assistant/supervised-installer/releases/download/${HA_SUP_VER}/homeassistant-supervised.deb" -P /root
+wget https://github.com/home-assistant/supervised-installer/releases/download/3.0.0/homeassistant-supervised.deb -P /root
 
 # Создание скрипта post-reboot
 cat << 'EOF' > /root/post-reboot.sh

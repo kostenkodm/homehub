@@ -20,7 +20,8 @@ apt update
 apt-get install -y \
   jq wget curl udisks2 libglib2.0-bin network-manager \
   dbus apparmor-utils systemd-journal-remote lsb-release \
-  bluez systemd-timesyncd systemd-resolved
+  bluez systemd-timesyncd systemd-resolved \
+  cifs-utils nfs-common
 
 # Корректировка /etc/os-release для обхода проверки ОС
 # Сохраняем оригинальную версию, но указываем ID=debian и оставляем VERSION_ID=12 (bookworm)
@@ -53,9 +54,12 @@ cat << 'EOF' > /root/post-reboot.sh
 exec &>> /var/log/post-reboot.log
 
 echo "=== Начинается установка Home Assistant Supervised ==="
-# Обход проверки ОС, даже если используем Debian 12
+# Обход проверки ОС и указание типа машины
 export BYPASS_OS_CHECK=true
-/usr/bin/dpkg -i /root/homeassistant-supervised.deb
+export MACHINE=odroid-c2
+# Устанавливаем пакет с указанием MACHINE
+/usr/bin/env MACHINE="$MACHINE" BYPASS_OS_CHECK="$BYPASS_OS_CHECK" \
+  /usr/bin/dpkg -i /root/homeassistant-supervised.deb
 
 # Отключаем этот сервис после выполнения
 /usr/bin/systemctl disable post-reboot.service

@@ -1,38 +1,72 @@
 #!/bin/bash
 
-# Turn off the LED
-sudo bash -c 'echo 0 > /sys/devices/platform/gpio-leds/leds/working/brightness'
-# Change hostname
-sudo hostnamectl hostname HomeHub
-# Update package list
-sudo apt update
+# Проверка, запущен ли скрипт от имени root
+if [ "$EUID" -ne 0 ]; then
+  echo "Пожалуйста, запустите скрипт от имени root"
+  exit 1
+fi
 
-# Install required packages
-sudo apt-get install -y jq wget curl udisks2 libglib2.0-bin network-manager dbus apparmor-utils systemd-journal-remote lsb-release bluez systemd-timesyncd
+hostnamectl set-hostname HomeHub
 
-# Download and install OS Agent
-wget https://github.com/home-assistant/os-agent/releases/download/1.7.2/os-agent_1.7.2_linux_aarch64.deb
-sudo dpkg -i os-agent_1.7.2_linux_aarch64.deb
+# Отключение светодиода
+echo 0 > /sys/devices/platform/gpio-leds/leds/working/brightness
 
-# Install Docker
-curl -fsSL https://get.docker.com -o get-docker.sh
-sudo sh ./get-docker.sh
+# Обновление списка пакетов
+apt update
 
-# Add user to docker group
-sudo usermod -aG docker $USER
+# Установка необходимых пакетов
+apt-get install -y jq wget curl udisks2 libglib2.0-bin network-manager dbus apparmor-utils systemd-journal-remote lsb-release bluez systemd-timesyncd
 
-# Download Home Assistant supervised installer
-wget https://github.com/home-assistant/supervised-installer/releases/download/3.0.0/homeassistant-supervised.deb
+# Загрузка и установка OS Agent
+wget https://github.com/home-assistant/os-agent/releases/download/1.7.2/os-agent_1.7.2_linux_aarch64.deb -P /root
+dpkg -i /root/os-agent_1.7.2_linux_aarch64.deb
 
-# Install systemd-resolved
-sudo apt-get install -y systemd-resolved
+# Установка Docker
+curl -fsSL https://get.docker.com -o /root/get-docker.sh
+sh /root/get-docker.sh
 
-# Modify /etc/os-release
-sudo sed -i 's/^PRETTY_NAME=.*$/PRETTY_NAME="Debian GNU\/Linux 12 (bookworm)"/' /etc/os-release
+# Добавление пользователя в группу docker
+usermod -aG docker $SUDO_USER
 
-# Create post-reboot script
-echo 'BYPASS_OS_CHECK=true sudo dpkg -i homeassistant-supervised.deb' > post-reboot.sh
-echo "После перезагрузки выполните: bash post-reboot.sh"
+# Загрузка установщика Home Assistant Supervised
+wget https://github.com/home-assistant/supervised-installer/releases/download/3.0.0/homeassistant-supervised.deb -P /root
 
-# Reboot
-sudo reboot
+# Установка systemd-resolved
+apt-get install -y systemd-resolved
+
+# Изменение файла /etc/os-release
+sed -i 's/^PRETTY_NAME=.*$/PRETTY_NAME="Debian GNU\/Linux 12 (bookworm)"/' /etc/os-release
+
+# Создание скрипта для выполнения после перезагрузки
+cat << EOF > /root/post-reboot.sh
+#!/bin/bash
+echo "Начинается установка Home Assistant..." >> /var/log/post-reboot.log
+BYPASS_OS_CHECK=true dpkg -i /root/homeassistant-supervised.deb >> /var/log/post-reboot.log 2>&1
+systemctl disable post-reboot.service
+echo "Попытка установки Home Assistant завершена. Подробности в /var/log/post-reboot.log" >> /var/log/post-reboot.log
+EOF
+
+# Назначение прав на выполнение скрипта
+chmod +x /root/post-reboot.sh
+
+# Создание systemd сервиса для выполнения скрипта после перезагрузки
+cat << EOF > /etc/systemd/system/post-reboot.service
+[Unit]
+Description=Run post-reboot script
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash /root/post-reboot.sh
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# Перезагрузка systemd и включение сервиса
+systemctl daemon-reload
+systemctl enable post-reboot.service
+
+# Сообщение пользователю и перезагрузка
+echo "Система будет перезагружена. После перезагрузки проверьте статус установки в /var/log/post-reboot.log"
+reboot
